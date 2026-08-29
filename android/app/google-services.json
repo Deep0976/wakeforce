@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "997847107903",
+    "project_id": "wakeforce-wake-mission",
+    "storage_bucket": "wakeforce-wake-mission.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997847107903:android:5b70611ec33b06e383eb8a",
+        "android_client_info": {
+          "package_name": "com.wakemission.wake_mission_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "997847107903-g77lep825srsakn5edeeti6ietve0tog.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wakemission.wake_mission_app",
+            "certificate_hash": "884e6993dccc57ec1f8d2b3c36978343ebed2b66"
+          }
+        },
+        {
+          "client_id": "997847107903-nb46nc46b88rt1fri7b8esj61n1vjdk5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJ20bUjdXjR-wob22T9THVLyZ4obnCiL0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "997847107903-nb46nc46b88rt1fri7b8esj61n1vjdk5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

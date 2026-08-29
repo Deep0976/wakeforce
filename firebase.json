@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "wakeforce-wake-mission",
+          "appId": "1:997847107903:android:5b70611ec33b06e383eb8a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "wakeforce-wake-mission",
+          "configurations": {
+            "android": "1:997847107903:android:5b70611ec33b06e383eb8a"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "_site",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
