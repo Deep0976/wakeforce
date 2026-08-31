@@ -5,6 +5,7 @@ import '../models/alarm.dart';
 import '../models/mission_type.dart';
 import '../models/focus_session.dart';
 import '../models/user_stats.dart';
+import 'stats_cloud_sync.dart';
 import 'stats_repository.dart';
 
 const _xpPerLevel = 250;
@@ -70,11 +71,21 @@ class StatsProvider extends ChangeNotifier {
   Future<void> loadForUser(String uid) async {
     _repository = StatsRepository(uid);
     _stats = await _repository!.loadStats();
+
+    // Pull whatever the account already has and merge it in. On a fresh
+    // install this restores the student's streak; on an existing one it is a
+    // no-op because the merge never lowers a counter.
+    final cloud = await StatsCloudSync.instance.fetch(uid);
+    if (cloud != null) {
+      _stats = StatsCloudSync.merge(_stats, cloud);
+    }
+
     _rolloverWeekIfNeeded();
     _decayStreakIfBroken();
     _loaded = true;
     notifyListeners();
     await _repository!.saveStats(_stats);
+    await StatsCloudSync.instance.push(uid, _stats);
     await _syncAnalyticsUserProperties();
   }
 
@@ -213,6 +224,8 @@ class StatsProvider extends ChangeNotifier {
 
   Future<void> _persist() async {
     await _repository?.saveStats(_stats);
+    final uid = _repository?.uid;
+    if (uid != null) await StatsCloudSync.instance.push(uid, _stats);
     await _syncAnalyticsUserProperties();
     notifyListeners();
   }

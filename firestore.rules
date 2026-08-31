@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A student's streak and XP. Readable and writable only by the signed-in
+    // account it belongs to -- never by another student, and never
+    // anonymously. The document id IS the Firebase Auth uid, so the check is
+    // exact rather than a field that could be spoofed in the payload.
+    match /userStats/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Anything not named above is denied. Adding a collection later means
+    // deliberately writing a rule for it, rather than inheriting access.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
