@@ -80,6 +80,22 @@ class RoutineBlock {
   /// before" only moves the alert earlier, it does not switch it on.
   bool get notifies => true;
 
+  /// A block that takes over the screen when it starts. It has to be
+  /// scheduled alarm-grade (setAlarmClock), which Doze can never hold back --
+  /// unlike setExact, which it parks until the phone is next used.
+  bool get opensScreen => ringAsAlarm || startsFocus;
+
+  /// The weekdays the alert actually lands on. Not the same as [days] when a
+  /// reminder is pushed back over midnight (a 00:10 Tuesday block with 15m of
+  /// warning alerts on Monday night). Never empty -- an "every day" block
+  /// alerts on all seven, so native code can treat an absent list as
+  /// "fires once" without guessing.
+  Set<int> get fireDays {
+    final offset = startMinute - remindBeforeMinutes < 0 ? -1 : 0;
+    final source = days.isEmpty ? const {1, 2, 3, 4, 5, 6, 7} : days;
+    return source.map((d) => ((d - 1 + offset) % 7 + 7) % 7 + 1).toSet();
+  }
+
   /// When this block should next fire, accounting for the reminder lead-in.
   /// Mirrors Alarm.nextOccurrence so both use the same scheduling shape.
   DateTime nextFireTime({DateTime? from}) {

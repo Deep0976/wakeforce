@@ -57,6 +57,12 @@ class _RingingScreenState extends State<RingingScreen> {
     super.initState();
     WakelockPlus.enable();
     _soundService.start();
+    // This screen is the alarm now, so the notification stands down to a
+    // silent way back rather than ringing over the top of it.
+    NotificationService.instance.quieten(
+      widget.alarm.id,
+      widget.alarm.label.isEmpty ? 'Wake up!' : widget.alarm.label,
+    );
     // Skipped for the shake mission -- the vibration motor's own movement
     // would register on the accelerometer and complete it on its own.
     if (widget.alarm.missionType != MissionType.shake) {

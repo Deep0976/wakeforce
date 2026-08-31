@@ -64,4 +64,44 @@ void main() {
       expect(BlockType.personal.canFocus, isFalse);
     });
   });
+
+
+  group('fireDays — the weekday the native re-arm repeats on', () {
+    test('matches the block days when the reminder stays inside the day', () {
+      final b = lunch(startMinute: 12 * 60 + 30, days: {1, 3, 5});
+      expect(b.fireDays, {1, 3, 5});
+    });
+
+    test('an every-day block lists all seven, never empty', () {
+      // Native reads an absent/empty list as "fires once", so "every day"
+      // must arrive spelled out or the block would ring only on its first day.
+      expect(lunch(startMinute: 9 * 60, days: {}).fireDays, {1, 2, 3, 4, 5, 6, 7});
+    });
+
+    test('a reminder pushed over midnight repeats on the previous day', () {
+      // 00:02 Monday block, 5m of warning -> the alert lands Sunday 23:57.
+      final b = RoutineBlock(
+        id: 'early',
+        title: 'Early',
+        startMinute: 2,
+        endMinute: 60,
+        days: {1},
+        remindBeforeMinutes: 5,
+      );
+      expect(b.nextFireTime(from: DateTime(2026, 8, 29)).weekday, 7);
+      expect(b.fireDays, {7});
+    });
+  });
+
+  test('opensScreen covers both toggles that take over the screen', () {
+    expect(lunch(startMinute: 600).opensScreen, isFalse);
+    expect(
+      lunch(startMinute: 600).copyWith(startsFocus: true).opensScreen,
+      isTrue,
+    );
+    expect(
+      lunch(startMinute: 600).copyWith(ringAsAlarm: true).opensScreen,
+      isTrue,
+    );
+  });
 }

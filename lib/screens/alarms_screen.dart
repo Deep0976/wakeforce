@@ -49,9 +49,34 @@ class _AlarmsScreenState extends State<AlarmsScreen>
     if (state == AppLifecycleState.resumed) _checkFullScreen();
   }
 
+  /// Whether the alarm is allowed to put itself in front of you. Two separate
+  /// OS grants do that, and either one missing leaves the alarm waiting to be
+  /// tapped: full-screen notifications, and "draw over other apps" -- the
+  /// latter is what carries background-activity-start rights, which is how
+  /// RingAlarmReceiver launches the screen when the phone is idle or another
+  /// app is open. Focus mode used to be the only place that asked for it.
+  bool _canOverlay = true;
+  bool get _canRingOnScreen => _canFullScreen && _canOverlay;
+
   Future<void> _checkFullScreen() async {
-    final ok = await FocusDndService.instance.canFullScreen();
-    if (mounted) setState(() => _canFullScreen = ok);
+    final fullScreen = await FocusDndService.instance.canFullScreen();
+    final overlay = await FocusDndService.instance.hasOverlay();
+    if (mounted) {
+      setState(() {
+        _canFullScreen = fullScreen;
+        _canOverlay = overlay;
+      });
+    }
+  }
+
+  /// One grant per tap: each opens its own OS settings screen, and the
+  /// lifecycle observer re-checks when the student comes back.
+  Future<void> _allowRingOnScreen() async {
+    if (!_canFullScreen) {
+      await FocusDndService.instance.requestFullScreen();
+    } else {
+      await FocusDndService.instance.requestOverlay();
+    }
   }
 
   late bool _showRoutine = widget.startOnRoutine;
@@ -93,7 +118,7 @@ class _AlarmsScreenState extends State<AlarmsScreen>
                     ],
                   ),
                 ),
-                if (!_canFullScreen)
+                if (!_canRingOnScreen)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.screen,
@@ -111,13 +136,14 @@ class _AlarmsScreenState extends State<AlarmsScreen>
                           Expanded(
                             child: Text(
                               'Alarms will not open on their own. Allow '
-                              'full-screen notifications so they ring on '
-                              'screen instead of waiting to be tapped.',
+                              'full-screen notifications and "draw over other '
+                              'apps" so they ring on screen instead of waiting '
+                              'to be tapped.',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                           TextButton(
-                            onPressed: FocusDndService.instance.requestFullScreen,
+                            onPressed: _allowRingOnScreen,
                             child: Text('ALLOW',
                                 style: sectionLabelStyle(context.wake.accentInk)),
                           ),

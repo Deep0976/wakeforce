@@ -36,8 +36,15 @@ void alarmFireCallback(int id, Map<String, dynamic> params) async {
   final label = params['label'] as String? ?? 'Wake up!';
   final alarmId = params['alarmId'] as String? ?? '';
 
+  // v2: the original channel played the phone's default *notification* sound,
+  // once, at notification volume -- silent on a handset set to vibrate. When
+  // the ringing screen was blocked from launching itself that ping was the
+  // whole alarm, so it looked like the alarm only rang once you tapped it.
+  // This channel carries the bundled tone at alarm volume and is INSISTENT
+  // (flag 4) so it repeats until dealt with. A channel is immutable once
+  // created, so turning any of that on needs a new id.
   final androidDetails = AndroidNotificationDetails(
-    'alarm_channel',
+    'alarm_channel_v2',
     'Alarms',
     channelDescription: 'Wake-up alarm notifications',
     importance: Importance.max,
@@ -45,10 +52,13 @@ void alarmFireCallback(int id, Map<String, dynamic> params) async {
     fullScreenIntent: true,
     category: AndroidNotificationCategory.alarm,
     playSound: true,
+    sound: const RawResourceAndroidNotificationSound('routine_chime'),
+    audioAttributesUsage: AudioAttributesUsage.alarm,
     enableVibration: true,
     vibrationPattern: _vibrationPattern,
     ongoing: true,
     autoCancel: false,
+    additionalFlags: Int32List.fromList(<int>[4]),
   );
   final details = NotificationDetails(android: androidDetails);
 
@@ -228,8 +238,12 @@ void routineBlockCallback(int id, Map<String, dynamic> params) async {
       block.nextFireTime(),
       id,
       routineBlockCallback,
-      alarmClock: ringAsAlarm,
+      alarmClock: block.opensScreen,
       exact: true,
+      // Without this the plugin picks setExact(), which Doze parks until the
+      // phone is next used -- so the block went off the moment the app was
+      // opened instead of at its own time. See scheduleBlock.
+      allowWhileIdle: true,
       wakeup: true,
       rescheduleOnReboot: true,
       params: params,
@@ -420,6 +434,10 @@ class NotificationService {
       kind: 'alarm',
       requestCode: id,
       at: next,
+      // null = fires once. A repeating alarm re-arms itself natively for the
+      // same reason a block does: nothing in Dart can reach native code from
+      // the background isolate that handles the ring.
+      repeatDays: alarm.isRepeating ? alarm.repeatDays.toList() : null,
     );
 
     try {
@@ -458,6 +476,13 @@ class NotificationService {
   /// block and a wake alarm colliding on the same AlarmManager slot.
   int _blockIdFor(String blockId) => ('block_$blockId').hashCode & 0x7fffffff;
 
+  /// A snooze gets its own slot rather than borrowing the block's. By the
+  /// time the student taps snooze the receiver has already armed the block's
+  /// next day; reusing that slot would overwrite it with a one-shot and lose
+  /// the repeat.
+  int _blockSnoozeIdFor(String blockId) =>
+      ('block_snooze_$blockId').hashCode & 0x7fffffff;
+
   /// Schedules (or clears) one block's reminder. A block that neither rings
   /// nor reminds is just a plan on the timeline and schedules nothing.
   Future<void> scheduleBlock(RoutineBlock block) async {
@@ -471,37 +496,47 @@ class NotificationService {
 
     // Alongside the notification: this is what actually brings the ringing
     // screen to the front when the OS refuses the full-screen intent.
-    if (block.ringAsAlarm || block.startsFocus) {
-      await FocusDndService.instance.scheduleNativeRing(
-        id: block.id,
-        kind: 'block',
-        requestCode: id,
-        at: block.nextFireTime(),
-      );
-    }
+    // Every block, not only the ones that take over the screen. This is the
+    // only delivery path that survives an OEM freezing the app process
+    // (ColorOS's "Hans" freezer does it ~30s after you leave the app, screen
+    // still on): a manifest broadcast wakes a frozen app, the Dart alarm's
+    // background isolate does not, so a plain reminder scheduled only through
+    // the plugin sat queued until the student happened to open the app.
+    //
+    // The repeat travels with the alarm and is re-armed natively for the same
+    // reason -- by then there is no method channel left to ask.
+    await FocusDndService.instance.scheduleNativeRing(
+      id: block.id,
+      kind: 'block',
+      requestCode: id,
+      at: block.nextFireTime(),
+      repeatDays: block.fireDays.toList(),
+      screen: block.opensScreen,
+      title: params['title'] as String? ?? block.title,
+      body: params['body'] as String? ?? '',
+    );
 
     try {
       await AndroidAlarmManager.oneShotAt(
         block.nextFireTime(),
         id,
         routineBlockCallback,
-        alarmClock: block.ringAsAlarm,
+        alarmClock: block.opensScreen,
         exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-        params: params,
-      );
-    } catch (e) {
-      debugPrint('[WakeForce] exact block schedule failed, falling back: $e');
-      await AndroidAlarmManager.oneShotAt(
-        block.nextFireTime(),
-        id,
-        routineBlockCallback,
+        // exact alone means setExact(), which Doze holds back until the phone
+        // is next used. A block has to land at its own time whatever the
+        // screen is doing, so it must be allowed while idle.
         allowWhileIdle: true,
         wakeup: true,
         rescheduleOnReboot: true,
         params: params,
       );
+    } catch (e) {
+      // Deliberately no inexact retry. Dropping `exact` bought an alarm with a
+      // 45-minute delivery window, which is not a schedule the student asked
+      // for -- and the native ring above already covers this block whatever
+      // happens here.
+      debugPrint('[WakeForce] block schedule failed for ${block.id}: $e');
     }
   }
 
@@ -527,13 +562,29 @@ class NotificationService {
     await init();
     await cancelBlockNotification(block.id);
     final id = _blockIdFor(block.id);
+    final at = DateTime.now().add(delay);
+
+    // Same as a first ring: the notification's full-screen intent is not
+    // enough on its own, so a snoozed block that takes over the screen needs
+    // the native ring to bring it back. One-shot -- the block's own repeating
+    // ring is untouched in its own slot.
+    if (block.opensScreen) {
+      await FocusDndService.instance.scheduleNativeRing(
+        id: block.id,
+        kind: 'block',
+        requestCode: _blockSnoozeIdFor(block.id),
+        at: at,
+      );
+    }
+
     try {
       await AndroidAlarmManager.oneShotAt(
-        DateTime.now().add(delay),
+        at,
         id,
         routineBlockCallback,
-        alarmClock: block.ringAsAlarm,
+        alarmClock: block.opensScreen,
         exact: true,
+        allowWhileIdle: true,
         wakeup: true,
         rescheduleOnReboot: true,
         params: _blockParams(block),
@@ -554,11 +605,17 @@ class NotificationService {
   Future<void> cancelBlock(String blockId) async {
     if (kIsWeb) return;
     await init();
-    await FocusDndService.instance.cancelNativeRing(
-      id: blockId,
-      kind: 'block',
-      requestCode: _blockIdFor(blockId),
-    );
+    for (final requestCode in [
+      _blockIdFor(blockId),
+      // A block deleted while a snooze is pending must not ring anyway.
+      _blockSnoozeIdFor(blockId),
+    ]) {
+      await FocusDndService.instance.cancelNativeRing(
+        id: blockId,
+        kind: 'block',
+        requestCode: requestCode,
+      );
+    }
     await AndroidAlarmManager.cancel(_blockIdFor(blockId));
   }
 
@@ -571,6 +628,40 @@ class NotificationService {
       requestCode: _notificationIdFor(alarmId),
     );
     await AndroidAlarmManager.cancel(_notificationIdFor(alarmId));
+  }
+
+  /// Swaps the loud fallback notification for a silent one once the ringing
+  /// screen is actually up.
+  ///
+  /// The notification is INSISTENT so it keeps ringing when the screen was
+  /// never allowed to launch -- but once the screen is in front it would just
+  /// be a second alarm playing over the first. It cannot simply be cancelled:
+  /// it is also the way back if the student presses Home mid-mission, which
+  /// is the only thing stopping them walking away from it.
+  Future<void> quieten(String alarmId, String label) async {
+    if (kIsWeb) return;
+    await init();
+    final id = _notificationIdFor(alarmId);
+    await _plugin.cancel(id: id);
+    await _plugin.show(
+      id: id,
+      title: label,
+      body: 'Complete your mission to stop the alarm',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'alarm_silent_channel',
+          'Alarm in progress',
+          channelDescription: 'Takes you back to a mission you walked away from',
+          importance: Importance.low,
+          priority: Priority.low,
+          playSound: false,
+          enableVibration: false,
+          ongoing: true,
+          autoCancel: false,
+        ),
+      ),
+      payload: alarmId,
+    );
   }
 
   /// Dismisses the currently-showing ringing notification for [alarmId].

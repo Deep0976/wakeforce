@@ -47,11 +47,23 @@ class FocusDndService {
 
   /// Schedules a native alarm that launches the ringing screen directly, so
   /// it does not depend on the notification's full-screen intent.
+  /// [repeatDays] are the weekdays (1 = Mon .. 7 = Sun) this ring recurs on,
+  /// or null for a one-shot. Native re-arms itself from them, because the
+  /// background isolate that runs when the alarm fires has no access to this
+  /// channel -- it belongs to the activity's engine, which by then is gone.
+  ///
+  /// [screen] false means the ring only posts [title]/[body] as a reminder
+  /// instead of taking over the screen. It still goes through native code:
+  /// a manifest broadcast reaches a frozen app, a background isolate does not.
   Future<bool> scheduleNativeRing({
     required String id,
     required String kind,
     required int requestCode,
     required DateTime at,
+    List<int>? repeatDays,
+    bool screen = true,
+    String title = '',
+    String body = '',
   }) async {
     if (kIsWeb) return false;
     try {
@@ -60,6 +72,10 @@ class FocusDndService {
             'kind': kind,
             'requestCode': requestCode,
             'triggerAtMillis': at.millisecondsSinceEpoch,
+            'repeatDays': repeatDays,
+            'screen': screen,
+            'title': title,
+            'body': body,
           }) ??
           false;
     } catch (e) {

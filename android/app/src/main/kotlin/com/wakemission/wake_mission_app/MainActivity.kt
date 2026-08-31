@@ -120,9 +120,18 @@ class MainActivity : FlutterActivity() {
                         val kind = call.argument<String>("kind") ?: "alarm"
                         val code = call.argument<Int>("requestCode") ?: 0
                         val at = call.argument<Long>("triggerAtMillis") ?: 0L
+                        // Absent means "fires once"; a list means re-arm
+                        // natively on those weekdays (1 = Mon .. 7 = Sun).
+                        val days = call.argument<List<Int>>("repeatDays")
+                            ?.toIntArray()
                         result.success(
                             if (id.isEmpty() || at <= 0) false
-                            else RingAlarmReceiver.schedule(this, code, kind, id, at)
+                            else RingAlarmReceiver.schedule(
+                                this, code, kind, id, at, days,
+                                screen = call.argument<Boolean>("screen") ?: true,
+                                title = call.argument<String>("title") ?: "",
+                                body = call.argument<String>("body") ?: "",
+                            )
                         )
                     }
 
