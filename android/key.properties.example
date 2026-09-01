@@ -1,0 +1,10 @@
+# Copy to android/key.properties and fill in. That file is gitignored and must
+# stay that way -- it holds the password to the key that identifies this app.
+#
+# Generate the keystore first (see RELEASE.md), then point storeFile at it.
+# storeFile is resolved relative to android/app/, so an absolute path is
+# safest.
+storePassword=
+keyPassword=
+keyAlias=wakeforce
+storeFile=/absolute/path/to/wakeforce-upload.jks

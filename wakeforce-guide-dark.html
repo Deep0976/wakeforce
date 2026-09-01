@@ -197,8 +197,9 @@
         <td>The alarm arrives as a notification you must tap, instead of taking the screen</td></tr>
       <tr><td>Usage access</td><td>Focus &rarr; Shield apps</td>
         <td>Focus can't tell which app you opened, so nothing is shielded</td></tr>
-      <tr><td>Draw over other apps</td><td>Focus &rarr; Shield apps</td>
-        <td>Focus sees the distraction but can't cover it</td></tr>
+      <tr><td>Draw over other apps</td><td>Banner at the top of Alarms, and Focus &rarr; Shield apps</td>
+        <td>The alarm can't put itself in front of whatever app is open, and Focus
+        sees the distraction but can't cover it</td></tr>
       <tr><td>Do Not Disturb access</td><td>Focus &rarr; Do Not Disturb</td>
         <td>The phone stays audible during a session</td></tr>
     </tbody></table></div>
@@ -207,6 +208,43 @@
     alarm waits politely to be tapped, which rather defeats the point of an alarm.
     On OPPO, Realme, Xiaomi and OnePlus phones, also allow WakeForce to
     <strong>run in the background</strong> &mdash; those phones freeze apps aggressively.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><div class="eyebrow">If an alarm ever fails to ring</div>
+  <h2>Stop your phone from freezing WakeForce</h2></div>
+  <p>OPPO, Realme, Vivo, Xiaomi, OnePlus and Samsung all shut background apps
+  down harder than Android itself does, to save battery. On a phone lying
+  untouched, WakeForce can be frozen within about thirty seconds &mdash; and a
+  frozen app cannot ring. The alarm is still set and still correct; it simply
+  goes off the moment you next unlock the phone, which is hours too late.</p>
+  <p>These settings are the fix, and they are the first thing to check if an
+  alarm ever misses. Wording differs a little by model, so look for the closest
+  match to what is described.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Phone</th><th>Where to go</th></tr></thead>
+    <tbody>
+      <tr><td>OPPO, Realme, OnePlus (ColorOS)</td>
+        <td>Settings &rarr; Battery &rarr; App battery usage &rarr; WakeForce &rarr;
+        <strong>Allow background activity</strong> and <strong>Allow auto-launch</strong>.
+        Then Settings &rarr; Battery &rarr; turn <strong>off</strong> Sleep standby optimisation.</td></tr>
+      <tr><td>Xiaomi, Redmi, POCO (MIUI / HyperOS)</td>
+        <td>Settings &rarr; Apps &rarr; WakeForce &rarr; <strong>Autostart</strong> on,
+        and Battery saver &rarr; <strong>No restrictions</strong>.</td></tr>
+      <tr><td>Vivo, iQOO (Funtouch / OriginOS)</td>
+        <td>Settings &rarr; Battery &rarr; High background power consumption &rarr; allow
+        WakeForce. Also Settings &rarr; Apps &rarr; <strong>Autostart</strong> on.</td></tr>
+      <tr><td>Samsung (One UI)</td>
+        <td>Settings &rarr; Battery &rarr; Background usage limits &rarr; make sure WakeForce
+        is <strong>not</strong> under Sleeping or Deep sleeping apps. In the app's own
+        Battery setting choose <strong>Unrestricted</strong>.</td></tr>
+      <tr><td>Stock Android, Motorola, Nothing</td>
+        <td>Settings &rarr; Apps &rarr; WakeForce &rarr; Battery &rarr; <strong>Unrestricted</strong>.</td></tr>
+    </tbody></table></div>
+  <div class="note"><span class="eyebrow">Worth doing too</span>
+    <p>Open recent apps, find WakeForce and <strong>lock</strong> it &mdash; a padlock icon, or
+    swipe down on the card. Locked apps survive &ldquo;clear all&rdquo;, which otherwise
+    quietly cancels the alarm you set for the morning.</p></div>
 </section>
 
 <section>

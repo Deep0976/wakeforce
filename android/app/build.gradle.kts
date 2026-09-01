@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -6,6 +9,15 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// The real signing key, deliberately not in the repo -- android/.gitignore
+// already excludes key.properties and *.jks. Create android/key.properties
+// from key.properties.example to sign for real; see RELEASE.md.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) FileInputStream(file).use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "com.wakemission.wake_mission_app"
@@ -29,11 +41,37 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to the debug key when there is no key.properties, so a
+            // fresh clone can still `flutter run --release`. That build must
+            // never reach a student: the debug key lives on one machine, and an
+            // update signed by a different key cannot install over it -- every
+            // student would have to uninstall first, losing their alarms.
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+                // println, not logger.warn: Flutter filters Gradle's warning
+                // channel out of `flutter build` output, and a warning nobody
+                // ever sees is worse than none -- it reads as reassurance.
+                println(
+                    "\n*** WakeForce: release build is DEBUG-SIGNED (no " +
+                        "android/key.properties).\n" +
+                        "*** Do not send this APK to students. See RELEASE.md.\n"
+                )
+            }
         }
     }
 }
