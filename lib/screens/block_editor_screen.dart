@@ -149,7 +149,7 @@ class _BlockEditorScreenState extends State<BlockEditorScreen> {
       when = 'tomorrow at $clock';
     } else {
       when = '${weekdayShortLabels[fire.weekday - 1]} '
-          '${fire.day}/${fire.month} at $clock';
+          '${shortDateLabel(fire)} at $clock';
     }
 
     ScaffoldMessenger.of(context).showSnackBar(

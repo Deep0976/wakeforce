@@ -48,3 +48,12 @@ const List<String> monthLongLabels = [
 /// than pulling in intl for one string.
 String longDateLabel(DateTime d) =>
     '${weekdayLongLabels[d.weekday - 1]}, ${d.day} ${monthLongLabels[d.month - 1]}';
+
+/// "08-09-2026". Zero-padded day-month-year, and deliberately not "8/9":
+/// that reads as either the 8th of September or the 9th of August depending
+/// on who is holding the phone. The one place this is used is the warning
+/// that a block will not fire for another week, so it is the last string in
+/// the app that can afford to be ambiguous about which day it means.
+String shortDateLabel(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-${d.year}';
