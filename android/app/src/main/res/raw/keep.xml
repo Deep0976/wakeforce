@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The alarm tone is only ever named as a string: "android.resource://.../raw/
+  routine_chime" from Kotlin, and RawResourceAndroidNotificationSound
+  ('routine_chime') from Dart. The release resource shrinker sees neither, so
+  it decided nothing used the file and dropped it. The report said
+  "raw:routine_chime is not reachable" in
+  build/app/outputs/mapping/release/resources.txt.
+
+  The result, in release builds only: an alarm that fell back to the phone's
+  default tone, and a routine notification with no sound at all.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/routine_chime"
+    tools:shrinkMode="safe" />

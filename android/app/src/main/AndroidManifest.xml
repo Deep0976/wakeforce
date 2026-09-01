@@ -22,6 +22,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <!-- The ringing service. mediaPlayback because that is literally what it
+         does: it plays the alarm tone, and it exists so the OS cannot freeze
+         the process out from under a ring that has already started. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="WakeForce"
@@ -67,6 +71,10 @@
         <receiver
             android:name=".RingAlarmReceiver"
             android:exported="false"/>
+        <service
+            android:name=".RingForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"/>
         <!-- exported so the system's own boot broadcast can reach it; it acts
              only on those two actions and takes no data from the intent. -->
         <receiver

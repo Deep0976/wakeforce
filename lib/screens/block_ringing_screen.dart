@@ -36,8 +36,17 @@ class _BlockRingingScreenState extends State<BlockRingingScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    _sound.start();
+    _startAlarmAudio();
     _vibration.start();
+  }
+
+  /// See RingingScreen._startAlarmAudio -- the ring service has been playing
+  /// since the block fired, and it keeps playing rather than handing over.
+  Future<void> _startAlarmAudio() async {
+    await FocusDndService.instance.boostAlarmVolume();
+    if (await FocusDndService.instance.isNativeRinging()) return;
+    if (!mounted) return;
+    await _sound.start();
   }
 
   @override
@@ -50,6 +59,8 @@ class _BlockRingingScreenState extends State<BlockRingingScreen> {
 
   Future<void> _stopRinging() async {
     await _sound.stop();
+    await FocusDndService.instance.stopNativeRing();
+    await FocusDndService.instance.restoreAlarmVolume();
     await _vibration.stop();
     // The notification is ongoing and insistent, so it keeps sounding until
     // it is explicitly taken down.

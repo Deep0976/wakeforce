@@ -36,29 +36,25 @@ void alarmFireCallback(int id, Map<String, dynamic> params) async {
   final label = params['label'] as String? ?? 'Wake up!';
   final alarmId = params['alarmId'] as String? ?? '';
 
-  // v2: the original channel played the phone's default *notification* sound,
-  // once, at notification volume -- silent on a handset set to vibrate. When
-  // the ringing screen was blocked from launching itself that ping was the
-  // whole alarm, so it looked like the alarm only rang once you tapped it.
-  // This channel carries the bundled tone at alarm volume and is INSISTENT
-  // (flag 4) so it repeats until dealt with. A channel is immutable once
-  // created, so turning any of that on needs a new id.
+  // v3 is deliberately silent. RingForegroundService now owns the alarm tone
+  // and starts it the instant the alarm fires, which this callback cannot
+  // promise -- it rides a JobService that an OEM freezer defers. Two loud
+  // notifications would simply ring over the top of it. This one survives as
+  // the full-screen intent and the way back to the mission.
+  // (v2 was loud; a channel is immutable once created, so going quiet needs a
+  // new id just as going loud did.)
   final androidDetails = AndroidNotificationDetails(
-    'alarm_channel_v2',
+    'alarm_channel_v3',
     'Alarms',
     channelDescription: 'Wake-up alarm notifications',
     importance: Importance.max,
     priority: Priority.high,
     fullScreenIntent: true,
     category: AndroidNotificationCategory.alarm,
-    playSound: true,
-    sound: const RawResourceAndroidNotificationSound('routine_chime'),
-    audioAttributesUsage: AudioAttributesUsage.alarm,
-    enableVibration: true,
-    vibrationPattern: _vibrationPattern,
+    playSound: false,
+    enableVibration: false,
     ongoing: true,
     autoCancel: false,
-    additionalFlags: Int32List.fromList(<int>[4]),
   );
   final details = NotificationDetails(android: androidDetails);
 
@@ -145,25 +141,20 @@ void routineBlockCallback(int id, Map<String, dynamic> params) async {
       // importance are fixed when it is created, and this one needs the
       // bundled alarm tone at alarm volume rather than whatever the wake
       // channel was first created with.
+      // v2 is silent for the same reason as alarm_channel_v3: a block that
+      // rings as a full alarm goes through RingForegroundService, which is
+      // already playing the tone by the time this runs.
       ? AndroidNotificationDetails(
-          'block_alarm_channel_v1',
+          'block_alarm_channel_v2',
           'Routine block alarms',
           channelDescription: 'Blocks you asked to ring as a full alarm',
           importance: Importance.max,
           priority: Priority.high,
           fullScreenIntent: true,
           category: AndroidNotificationCategory.alarm,
-          playSound: true,
-          sound: const RawResourceAndroidNotificationSound('routine_chime'),
-          audioAttributesUsage: AudioAttributesUsage.alarm,
-          enableVibration: true,
-          vibrationPattern: _vibrationPattern,
-          // Ongoing so it cannot be brushed away by accident, and INSISTENT
-          // (flag 4) so the tone repeats until it is actually dismissed.
-          // Without this the "alarm" played its sound once and went quiet --
-          // which is a notification, not an alarm.
+          playSound: false,
+          enableVibration: false,
           ongoing: true,
-          additionalFlags: Int32List.fromList(<int>[4]),
         )
       // v2: the original channel was created silent, and an Android channel
       // is immutable once created -- turning sound on needs a new id or

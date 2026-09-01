@@ -276,7 +276,9 @@ class RingAlarmReceiver : BroadcastReceiver() {
                         // student asked to be reminded about is not optional.
                         setSound(
                             Uri.parse(
-                                "android.resource://${context.packageName}/raw/routine_chime"
+                                // By id -- see RingForegroundService.
+                                "android.resource://${context.packageName}/" +
+                                    "${R.raw.routine_chime}"
                             ),
                             AudioAttributes.Builder()
                                 .setUsage(AudioAttributes.USAGE_ALARM)
@@ -360,23 +362,56 @@ class RingAlarmReceiver : BroadcastReceiver() {
             return
         }
 
+        // Hand straight to the foreground service rather than starting the
+        // activity here. This receiver returns in milliseconds and its process
+        // is freezable again immediately -- which is what left the phone silent
+        // for 19 seconds after an alarm that had fired exactly on time. A
+        // foreground service cannot be frozen, and starting one is allowed
+        // from an exact alarm.
         try {
-            context.startActivity(
-                Intent(context, MainActivity::class.java).apply {
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                    )
-                    putExtra(EXTRA_KIND, kind)
-                    putExtra(EXTRA_ID, id)
-                }
-            )
-            Log.i(TAG, "launched ringing screen for $kind $id")
+            val service = Intent(context, RingForegroundService::class.java).apply {
+                putExtra(RingForegroundService.EXTRA_KIND, kind)
+                putExtra(RingForegroundService.EXTRA_ID, id)
+                putExtra(RingForegroundService.EXTRA_NOTIFICATION_ID, requestCode)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(service)
+            } else {
+                context.startService(service)
+            }
+            Log.i(TAG, "handed $kind $id to the ring service")
+
+            // Launched from here, not from the service: the alarm broadcast is
+            // what carries the background-activity-start grant, and a service
+            // started from it does not inherit that. Done after the service so
+            // the sound is already going if this is refused.
+            try {
+                context.startActivity(
+                    Intent(context, MainActivity::class.java).apply {
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        )
+                        putExtra(EXTRA_KIND, kind)
+                        putExtra(EXTRA_ID, id)
+                    }
+                )
+                Log.i(TAG, "launched ringing screen for $kind $id")
+            } catch (e: Exception) {
+                // The service's full-screen intent is the way in now, and it is
+                // already ringing either way.
+                Log.w(TAG, "activity start refused; notification only", e)
+            }
         } catch (e: Exception) {
-            // Without the overlay permission Android blocks a background
-            // activity start. The notification is still posted, so the alarm
-            // is not lost -- it just has to be tapped.
-            Log.w(TAG, "background activity start blocked; notification only", e)
+            // Refused: make the noise from here instead, so the alarm is never
+            // silent just because the service could not start.
+            Log.w(TAG, "ring service refused; falling back to notification", e)
+            chime(
+                context,
+                requestCode,
+                intent.getStringExtra(EXTRA_TITLE) ?: "Wake up!",
+                intent.getStringExtra(EXTRA_BODY) ?: "",
+            )
         }
     }
 }

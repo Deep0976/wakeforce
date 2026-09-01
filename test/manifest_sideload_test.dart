@@ -55,6 +55,40 @@ void main() {
     expect(manifest.contains('android.permission.RECEIVE_BOOT_COMPLETED'), isTrue);
   });
 
+  test('the ringing service is declared with a foreground type', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+
+    // This service is what stops an OEM freezing the app between the alarm
+    // firing and the ringing screen appearing. Undeclared -- or declared
+    // without its type and permission on Android 14+ -- it cannot start, and
+    // the alarm goes back to being silent until the app is opened.
+    final service = RegExp(
+      r'<service[^>]*android:name="\.RingForegroundService"[^>]*/?>',
+      dotAll: true,
+    ).firstMatch(manifest);
+    expect(service, isNotNull);
+    expect(service!.group(0)!.contains('android:foregroundServiceType="mediaPlayback"'),
+        isTrue);
+    expect(
+        manifest.contains(
+            'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'),
+        isTrue);
+  });
+
+  test('the alarm tone is kept out of the resource shrinker', () {
+    // Release-only bug: the tone is only ever named as a string, so the
+    // shrinker reported "raw:routine_chime is not reachable" and dropped it.
+    // The alarm then fell back to the phone's default tone and the routine
+    // notification played nothing at all.
+    final keep = File('android/app/src/main/res/raw/keep.xml');
+    expect(keep.existsSync(), isTrue);
+    expect(keep.readAsStringSync().contains('@raw/routine_chime'), isTrue);
+    expect(
+        File('android/app/src/main/res/raw/routine_chime.wav').existsSync(),
+        isTrue);
+  });
+
   test('DND access is declared, or Focus cannot ask for it', () {
     final manifest =
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();

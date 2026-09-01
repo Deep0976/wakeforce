@@ -135,6 +135,33 @@ class MainActivity : FlutterActivity() {
                         )
                     }
 
+                    // The ringing screen asks this before starting its own
+                    // tone. If the service is already playing it keeps
+                    // playing: one sound source for the whole ring, so there
+                    // is no seam and no chance of the two being on different
+                    // tones (the service falls back to the system alarm when
+                    // the bundled one will not open).
+                    "isNativeRinging" -> result.success(
+                        RingForegroundService.isRinging
+                    )
+
+                    // The alarm is actually over now, so the service that
+                    // carried it here can stand down.
+                    "stopNativeRing" -> {
+                        RingForegroundService.stop(this)
+                        result.success(null)
+                    }
+
+                    "boostAlarmVolume" -> {
+                        AlarmVolume.boost(this)
+                        result.success(null)
+                    }
+
+                    "restoreAlarmVolume" -> {
+                        AlarmVolume.restore(this)
+                        result.success(null)
+                    }
+
                     "cancelNativeRing" -> {
                         val id = call.argument<String>("id") ?: ""
                         val kind = call.argument<String>("kind") ?: "alarm"

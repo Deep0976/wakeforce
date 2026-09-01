@@ -84,6 +84,22 @@ class FocusDndService {
     }
   }
 
+  /// Whether the ring service is currently playing the alarm. A ringing
+  /// screen asks before starting its own tone -- exactly one of them makes
+  /// noise for the whole ring, so there is no seam to hear.
+  Future<bool> isNativeRinging() => _boolCall('isNativeRinging');
+
+  /// Stops the foreground service that has been ringing since the alarm
+  /// fired. Called when the alarm is actually over -- mission solved, snoozed
+  /// or skipped -- not merely when its screen appears.
+  Future<void> stopNativeRing() => _voidCall('stopNativeRing');
+
+  /// Forces the alarm stream to full for the duration of a ring, so an alarm
+  /// cannot be slept through because the volume was turned down last night.
+  Future<void> boostAlarmVolume() => _voidCall('boostAlarmVolume');
+
+  Future<void> restoreAlarmVolume() => _voidCall('restoreAlarmVolume');
+
   Future<void> cancelNativeRing({
     required String id,
     required String kind,

@@ -16,6 +16,7 @@ import '../models/mission_type.dart';
 import '../services/alarm_provider.dart';
 import '../services/alarm_sound_service.dart';
 import '../services/alarm_vibration_service.dart';
+import '../services/focus_dnd_service.dart';
 import '../services/notification_service.dart';
 import '../services/stats_provider.dart';
 import '../theme/app_theme.dart';
@@ -56,7 +57,7 @@ class _RingingScreenState extends State<RingingScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    _soundService.start();
+    _startAlarmAudio();
     // This screen is the alarm now, so the notification stands down to a
     // silent way back rather than ringing over the top of it.
     NotificationService.instance.quieten(
@@ -88,9 +89,30 @@ class _RingingScreenState extends State<RingingScreen> {
     });
   }
 
+  /// The ring service has been playing since the alarm fired. If it still is,
+  /// leave it: one sound source for the whole ring means no seam when this
+  /// screen arrives, and no chance of ending up on a different tone than the
+  /// one the student has been hearing. Only when this screen is the first
+  /// thing to ring -- tapped from a notification, service never started --
+  /// does it play its own.
+  Future<void> _startAlarmAudio() async {
+    await FocusDndService.instance.boostAlarmVolume();
+    if (await FocusDndService.instance.isNativeRinging()) return;
+    if (!mounted) return;
+    await _soundService.start();
+  }
+
+  /// The alarm is over. Everything that could be making noise stops here.
+  Future<void> _stopAlarmAudio() async {
+    await _soundService.stop();
+    await FocusDndService.instance.stopNativeRing();
+    await FocusDndService.instance.restoreAlarmVolume();
+  }
+
   @override
   void dispose() {
     _ticker.cancel();
+    _stopAlarmAudio();
     _soundService.dispose();
     _vibrationService.stop();
     WakelockPlus.disable();
@@ -102,7 +124,7 @@ class _RingingScreenState extends State<RingingScreen> {
     setState(() => _missionComplete = true);
     final statsProvider = context.read<StatsProvider>();
     final alarmProvider = context.read<AlarmProvider>();
-    await _soundService.stop();
+    await _stopAlarmAudio();
     await _vibrationService.stop();
     await NotificationService.instance.dismissNotification(widget.alarm.id);
     // A one-time alarm has no legitimate "next" occurrence once it's fired --
