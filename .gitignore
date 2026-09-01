@@ -48,3 +48,6 @@ app.*.map.json
 /_designs/
 /_site/
 *.apk
+
+# Firebase hosting is gone; the guide lives on Vercel.
+.firebase/
