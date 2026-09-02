@@ -36,6 +36,12 @@
     font-size:.71rem; font-weight:600; letter-spacing:.17em;
     text-transform:uppercase; color:var(--ink3);
   }
+  .oem{
+    display:block; margin-top:3px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:.66rem; font-weight:600; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink3);
+  }
   .clock{font-family:'IBM Plex Mono',ui-monospace,monospace;
     font-variant-numeric:tabular-nums; font-weight:600}
 
@@ -187,7 +193,7 @@
 
 <section>
   <div class="sec-head"><div class="eyebrow">One-time setup</div>
-  <h2>Four permissions, and what each one buys you</h2></div>
+  <h2>Five permissions, and what each one buys you</h2></div>
   <p>WakeForce asks for these on the screen where they're used, never all at once.
   Skip any and the app still runs &mdash; that part just stays off.</p>
   <div class="tablewrap"><table>
@@ -200,9 +206,26 @@
       <tr><td>Draw over other apps</td><td>Banner at the top of Alarms, and Focus &rarr; Shield apps</td>
         <td>The alarm can't put itself in front of whatever app is open, and Focus
         sees the distraction but can't cover it</td></tr>
+      <tr><td>Display pop-up windows while running in the background
+        <span class="oem">OPPO, Realme, OnePlus, Vivo, Xiaomi</span></td>
+        <td>Long-press the app icon &rarr; App info</td>
+        <td>The mission screen never opens by itself. The alarm rings, but you get
+        a notification to tap &mdash; on these phones this one blocks the screen even
+        when every Android permission above is granted</td></tr>
       <tr><td>Do Not Disturb access</td><td>Focus &rarr; Do Not Disturb</td>
         <td>The phone stays audible during a session</td></tr>
     </tbody></table></div>
+  <div class="note"><span class="eyebrow">OPPO, Realme, OnePlus, Vivo and Xiaomi</span>
+    <p>These phones add a switch Android does not have:
+    <strong>&ldquo;Display pop-up windows while running in the background&rdquo;</strong>.
+    It is separate from &ldquo;Draw over other apps&rdquo;, and it is the one that decides
+    whether the mission screen can open on its own. With it off, the alarm still
+    rings on time but you get a notification to press &mdash; the phone refuses the
+    app the screen even though Android allowed it.</p>
+    <p>Long-press the WakeForce icon &rarr; <strong>App info</strong> &rarr; find
+    <strong>Display pop-up windows while running in the background</strong> and turn it
+    on. Wording varies: some models call it <em>Background pop-up window</em> or list
+    it under <em>Floating windows</em>.</p></div>
   <div class="note"><span class="eyebrow">Do this one first</span>
     <p>Grant <strong>full-screen notifications</strong> before anything else. Without it the
     alarm waits politely to be tapped, which rather defeats the point of an alarm.
