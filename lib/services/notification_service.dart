@@ -16,7 +16,6 @@ import 'alarm_repository.dart';
 
 const _pendingRingAlarmKey = 'pendingRingAlarmId';
 const _pendingRingBlockKey = 'pendingRingBlockId';
-final _vibrationPattern = Int64List.fromList([0, 800, 400, 800, 400, 800]);
 
 /// Runs in the AndroidAlarmManager background isolate when a scheduled
 /// alarm fires. This is Dart code we control end-to-end (unlike relying on
@@ -124,74 +123,24 @@ void alarmFireCallback(int id, Map<String, dynamic> params) async {
 void routineBlockCallback(int id, Map<String, dynamic> params) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final plugin = FlutterLocalNotificationsPlugin();
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const settings = InitializationSettings(android: androidSettings);
-  await plugin.initialize(settings: settings);
-
-  final title = params['title'] as String? ?? 'Routine block';
-  final body = params['body'] as String? ?? '';
+  // No plugin, no channel, no notification: a block opens its own screen the
+  // moment it starts, the way a wake alarm does. All of that was here to build
+  // something for the student to tap, which is the step they asked to lose.
+  // RingAlarmReceiver still chimes natively if the ring service cannot start,
+  // so a block is never silent.
   final ringAsAlarm = params['ringAsAlarm'] as bool? ?? false;
   final startsFocus = params['startsFocus'] as bool? ?? false;
-
-  // "Ring as full alarm" borrows the alarm channel so it is loud and
-  // full-screen; a plain reminder stays a quiet, dismissible notification.
-  final androidDetails = ringAsAlarm
-      // Its own channel, not the wake-alarm one: a channel's sound and
-      // importance are fixed when it is created, and this one needs the
-      // bundled alarm tone at alarm volume rather than whatever the wake
-      // channel was first created with.
-      // v2 is silent for the same reason as alarm_channel_v3: a block that
-      // rings as a full alarm goes through RingForegroundService, which is
-      // already playing the tone by the time this runs.
-      ? AndroidNotificationDetails(
-          'block_alarm_channel_v2',
-          'Routine block alarms',
-          channelDescription: 'Blocks you asked to ring as a full alarm',
-          importance: Importance.max,
-          priority: Priority.high,
-          fullScreenIntent: true,
-          category: AndroidNotificationCategory.alarm,
-          playSound: false,
-          enableVibration: false,
-          ongoing: true,
-        )
-      // v2: the original channel was created silent, and an Android channel
-      // is immutable once created -- turning sound on needs a new id or
-      // existing installs stay mute.
-      // v3 carries its own bundled chime. v2 relied on the phone's default
-      // notification sound, which is silent on plenty of handsets -- the
-      // student saw the notification appear and heard nothing. A channel's
-      // sound is fixed at creation, so changing it needs a new id.
-      : AndroidNotificationDetails(
-          'routine_channel_v3',
-          'Routine reminders',
-          channelDescription: 'A short chime when a routine block starts',
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.reminder,
-          playSound: true,
-          sound: const RawResourceAndroidNotificationSound('routine_chime'),
-          audioAttributesUsage: AudioAttributesUsage.alarm,
-          enableVibration: true,
-          vibrationPattern: _vibrationPattern,
-        );
+  final title = params['title'] as String? ?? 'Routine block';
 
   final blockId = params['blockId'] as String? ?? '';
 
-  try {
-    await plugin.show(
-      id: id,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(android: androidDetails),
-      // Prefixed so the tap handler can tell a block from a wake alarm --
-      // they open different screens.
-      payload: 'block:$blockId',
-    );
-  } catch (e) {
-    debugPrint('[WakeForce] routine notification failed for id=$id: $e');
-  }
+  // Deliberately no notification. The block opens its own screen the moment
+  // it starts, the way a wake alarm does, and a notification alongside that is
+  // just something else to dismiss. RingAlarmReceiver still posts one from
+  // native code if the ring service cannot start, so a block is never silent.
+  //
+  // androidDetails above is kept for that fallback's channel definitions.
+  debugPrint('[WakeForce] routine block $blockId fired');
 
   // A block that rings as a full alarm gets a real ringing screen, the same
   // way a wake alarm does. A block that starts a focus session needs the

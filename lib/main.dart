@@ -15,6 +15,7 @@ import 'services/focus_provider.dart';
 import 'services/routine_provider.dart';
 import 'services/shield_provider.dart';
 import 'services/auth_service.dart';
+import 'services/focus_dnd_service.dart';
 import 'services/notification_service.dart';
 import 'services/settings_provider.dart';
 import 'services/stats_provider.dart';
@@ -74,6 +75,7 @@ class _WakeMissionAppState extends State<WakeMissionApp>
     _pendingAlarmPoll = Timer.periodic(
       const Duration(seconds: 3),
       (_) {
+        _checkNativePendingRing();
         _checkPendingRingAlarm();
         _checkPendingRingBlock();
       },
@@ -91,6 +93,7 @@ class _WakeMissionAppState extends State<WakeMissionApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _checkNativePendingRing();
       _checkPendingRingAlarm();
       _checkPendingRingBlock();
     }
@@ -135,6 +138,25 @@ class _WakeMissionAppState extends State<WakeMissionApp>
       } else {
         await _checkPendingRingAlarm();
       }
+    }
+  }
+
+  /// The ring that launched the app, read off the Intent the native receiver
+  /// started us with. This is the path that makes the mission screen appear on
+  /// its own; the two below only ever saw a value when the Dart alarm callback
+  /// managed to run, which on a phone that freezes the app it often does not.
+  Future<void> _checkNativePendingRing() async {
+    final pending = await FocusDndService.instance.peekPendingRing();
+    if (pending == null) return;
+    final isBlock = pending.kind == 'block';
+    // Providers may still be loading right after a cold start. Leave it on the
+    // Intent so the next poll picks it up rather than dropping the alarm.
+    if (isBlock ? !_routineProvider.loaded : !_alarmProvider.loaded) return;
+    await FocusDndService.instance.clearPendingRing();
+    if (isBlock) {
+      _openBlockRingingScreen(pending.id);
+    } else {
+      _openRingingScreen(pending.id);
     }
   }
 

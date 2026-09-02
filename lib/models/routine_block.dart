@@ -80,10 +80,17 @@ class RoutineBlock {
   /// before" only moves the alert earlier, it does not switch it on.
   bool get notifies => true;
 
-  /// A block that takes over the screen when it starts. It has to be
-  /// scheduled alarm-grade (setAlarmClock), which Doze can never hold back --
-  /// unlike setExact, which it parks until the phone is next used.
-  bool get opensScreen => ringAsAlarm || startsFocus;
+  /// Every block takes over the screen when it starts, the same way a wake
+  /// alarm does. It used to depend on [ringAsAlarm] or [startsFocus], which
+  /// meant a plain block only posted a notification and the student had to
+  /// tap it to see anything -- a routine you have to go looking for is not a
+  /// routine. The two toggles still decide how loud it is, not whether it
+  /// appears.
+  ///
+  /// Also the reason a block is scheduled alarm-grade (setAlarmClock), which
+  /// Doze can never hold back -- unlike setExact, which it parks until the
+  /// phone is next used.
+  bool get opensScreen => true;
 
   /// The weekdays the alert actually lands on. Not the same as [days] when a
   /// reminder is pushed back over midnight (a 00:10 Tuesday block with 15m of

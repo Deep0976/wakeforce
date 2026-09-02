@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.PixelFormat
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -16,10 +17,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.provider.Settings
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.view.View
+import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 
 /**
@@ -77,6 +81,7 @@ class RingForegroundService : Service() {
     }
 
     private var player: MediaPlayer? = null
+    private var launchOverlay: View? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private val capHandler = Handler(Looper.getMainLooper())
 
@@ -92,11 +97,26 @@ class RingForegroundService : Service() {
         goForeground(notificationId, kind, id)
 
         acquireWakeLock()
+        // Before the activity start, and this is the whole trick. The denial
+        // spells out why the launch fails: "callingUidHasNonAppVisibleWindow:
+        // false". An app that already owns a visible window is allowed to
+        // start an activity from the background -- that is the same
+        // BAL_ALLOW_NON_APP_VISIBLE_WINDOW that lets the launch succeed when
+        // the student taps the notification. So put a window up first, then
+        // ask.
+        showLaunchOverlay()
         AlarmVolume.boost(this)
         startRinging()
         isRinging = true
 
+        // Clear first, then post. These were the other way round, so the
+        // launch below was cancelled a line after being scheduled and never
+        // ran once -- the screen only ever appeared when the full-screen
+        // intent happened to fire.
         capHandler.removeCallbacksAndMessages(null)
+        // A beat for the window manager to register the overlay before the
+        // start is judged against it.
+        capHandler.postDelayed({ launchScreen(kind, id) }, 300)
         capHandler.postDelayed({ stopSelf() }, MAX_RING_MS)
         Log.i(TAG, "ring service up for $kind $id")
         return START_NOT_STICKY
@@ -138,7 +158,12 @@ class RingForegroundService : Service() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOngoing(true)
-            .setSilent(true)
+            // No setSilent here, however tempting. A full-screen intent IS an
+            // alert, so a notification marked silent never fires one -- it
+            // just sits in the shade waiting to be tapped, which is the whole
+            // complaint. Silence comes from the channel above
+            // (setSound(null, null), enableVibration(false)); this service
+            // plays the tone itself.
             .setContentIntent(full)
             // The second route in, for when a background activity start is
             // refused outright.
@@ -153,6 +178,71 @@ class RingForegroundService : Service() {
             )
         } else {
             startForeground(notificationId, notification)
+        }
+    }
+
+    /// An invisible, untouchable window whose only job is to exist: it gives
+    /// the app a visible window so the background activity start below is
+    /// permitted. Transparent and NOT_TOUCHABLE, so it changes nothing the
+    /// student can see or feel, and it is torn down with the ring.
+    private fun showLaunchOverlay() {
+        if (launchOverlay != null) return
+        if (!Settings.canDrawOverlays(this)) {
+            Log.w(TAG, "no overlay permission; activity start will likely be refused")
+            return
+        }
+        try {
+            val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val view = View(this)
+            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+            }
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                PixelFormat.TRANSLUCENT,
+            )
+            wm.addView(view, params)
+            launchOverlay = view
+            Log.i(TAG, "launch overlay up")
+        } catch (e: Exception) {
+            Log.w(TAG, "could not show launch overlay", e)
+        }
+    }
+
+    private fun removeLaunchOverlay() {
+        val view = launchOverlay ?: return
+        launchOverlay = null
+        try {
+            (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(view)
+        } catch (e: Exception) {
+            Log.w(TAG, "could not remove launch overlay", e)
+        }
+    }
+
+    private fun launchScreen(kind: String, id: String) {
+        try {
+            startActivity(
+                Intent(this, MainActivity::class.java).apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                    )
+                    putExtra(RingAlarmReceiver.EXTRA_KIND, kind)
+                    putExtra(RingAlarmReceiver.EXTRA_ID, id)
+                }
+            )
+            Log.i(TAG, "ring service launched the screen for $kind $id")
+        } catch (e: Exception) {
+            Log.w(TAG, "ring service could not launch the screen", e)
         }
     }
 
@@ -246,6 +336,7 @@ class RingForegroundService : Service() {
 
     override fun onDestroy() {
         isRinging = false
+        removeLaunchOverlay()
         capHandler.removeCallbacksAndMessages(null)
         AlarmVolume.restore(this)
         try {

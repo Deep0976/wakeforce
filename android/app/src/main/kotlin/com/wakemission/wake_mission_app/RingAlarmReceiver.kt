@@ -1,5 +1,6 @@
 package com.wakemission.wake_mission_app
 
+import android.app.ActivityOptions
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -227,6 +228,71 @@ class RingAlarmReceiver : BroadcastReceiver() {
         }
 
         /**
+         * Opens the ringing screen without the student touching anything.
+         *
+         * Sent as a PendingIntent that opts in to a background activity start,
+         * not a plain startActivity. Android 14 refuses a direct start from the
+         * background and says why in the denial: "autoOptInReason:
+         * notPendingIntent" and "balRequireOptInByPendingIntentCreator: true"
+         * -- it wants the sender to ask for this explicitly, which a direct
+         * start has no way of doing.
+         *
+         * A vendor layer can still refuse: on ColorOS,
+         * BackgroundActivityStartControllerExtImpl denies the start 8ms after
+         * AOSP has allowed it for SYSTEM_ALERT_WINDOW, and no app-side call
+         * gets past that -- it needs the phone's own "display pop-up windows
+         * while running in the background" switch. The notification's
+         * full-screen intent stays as the fallback, and is what carries the
+         * locked-screen case regardless.
+         */
+        private fun launchRingingScreen(
+            context: Context,
+            requestCode: Int,
+            kind: String,
+            id: String,
+        ) {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                )
+                putExtra(EXTRA_KIND, kind)
+                putExtra(EXTRA_ID, id)
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // Both halves have to opt in. The denial names them
+                    // separately: balRequireOptInByPendingIntentCreator is
+                    // true, so opting in only on send left
+                    // balAllowedByPiCreator at BSP.NONE and the start was
+                    // still refused.
+                    val creatorOptIn = ActivityOptions.makeBasic()
+                        .setPendingIntentCreatorBackgroundActivityStartMode(
+                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                        )
+                        .toBundle()
+                    val senderOptIn = ActivityOptions.makeBasic()
+                        .setPendingIntentBackgroundActivityStartMode(
+                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                        )
+                        .toBundle()
+                    PendingIntent.getActivity(
+                        context,
+                        requestCode,
+                        intent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                        creatorOptIn,
+                    ).send(context, 0, null, null, null, null, senderOptIn)
+                } else {
+                    context.startActivity(intent)
+                }
+                Log.i(TAG, "launched ringing screen for $kind $id")
+            } catch (e: Exception) {
+                Log.w(TAG, "activity start refused; full-screen intent only", e)
+            }
+        }
+
+        /**
          * The next instant at the same wall-clock time landing on one of
          * [days], after now. Stepping calendar days rather than adding 24h
          * keeps the alarm at the time the student set across a DST shift.
@@ -385,23 +451,7 @@ class RingAlarmReceiver : BroadcastReceiver() {
             // what carries the background-activity-start grant, and a service
             // started from it does not inherit that. Done after the service so
             // the sound is already going if this is refused.
-            try {
-                context.startActivity(
-                    Intent(context, MainActivity::class.java).apply {
-                        addFlags(
-                            Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                        )
-                        putExtra(EXTRA_KIND, kind)
-                        putExtra(EXTRA_ID, id)
-                    }
-                )
-                Log.i(TAG, "launched ringing screen for $kind $id")
-            } catch (e: Exception) {
-                // The service's full-screen intent is the way in now, and it is
-                // already ringing either way.
-                Log.w(TAG, "activity start refused; notification only", e)
-            }
+            launchRingingScreen(context, requestCode, kind, id)
         } catch (e: Exception) {
             // Refused: make the noise from here instead, so the alarm is never
             // silent just because the service could not start.

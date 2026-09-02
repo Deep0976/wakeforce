@@ -43,6 +43,9 @@ class _EditAlarmScreenState extends State<EditAlarmScreen> {
     super.initState();
     final alarm = widget.alarm;
     _time = alarm == null
+        // The current time, exactly. Nudging it a minute ahead read as the
+        // wheel opening on the wrong time; a student setting an alarm scrolls
+        // to the time they want anyway.
         ? TimeOfDay.now()
         : TimeOfDay(hour: alarm.hour, minute: alarm.minute);
     _repeatDays = {...(alarm?.repeatDays ?? {})};

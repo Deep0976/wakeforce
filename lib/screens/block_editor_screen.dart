@@ -39,12 +39,12 @@ class _BlockEditorScreenState extends State<BlockEditorScreen> {
     super.initState();
     final b = widget.block;
     _title = TextEditingController(text: b?.title ?? '');
-    // A new block starts from where the student actually is, rounded up to
-    // the next 15 minutes -- the old fixed 08:00-10:00 meant every block had
-    // to be dragged a long way before it meant anything.
+    // The current time, exactly -- the same thing the alarm editor opens on.
+    // Rounding up to the next quarter hour, or nudging five minutes ahead,
+    // both meant the wheel opened on a time the student had not asked for and
+    // had to be dragged back.
     final now = DateTime.now();
-    final rounded = ((now.hour * 60 + now.minute + 14) ~/ 15) * 15;
-    _start = b?.startMinute ?? (rounded % (24 * 60));
+    _start = b?.startMinute ?? (now.hour * 60 + now.minute);
     // Clamp rather than wrap: (start + 60) % 1440 puts a late-evening block's
     // end BEFORE its start, which is not a block at all.
     _end = b?.endMinute ?? (_start + 60 >= 24 * 60 ? 24 * 60 - 1 : _start + 60);

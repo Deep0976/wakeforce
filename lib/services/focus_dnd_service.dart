@@ -84,6 +84,28 @@ class FocusDndService {
     }
   }
 
+  /// The alarm or block whose ring launched the app, as `(kind, id)` where
+  /// kind is 'alarm' or 'block'. Null when the app was opened normally.
+  ///
+  /// Read off the launching Intent rather than SharedPreferences: the native
+  /// receiver writes the legacy XML store while Dart's SharedPreferencesAsync
+  /// reads DataStore, so a value written there never arrives. Peek rather than
+  /// consume -- the caller may not be able to act yet -- then
+  /// [clearPendingRing] once the screen is actually open.
+  Future<({String kind, String id})?> peekPendingRing() async {
+    if (kIsWeb) return null;
+    try {
+      final r = await _channel.invokeMapMethod<String, String>('peekPendingRing');
+      final id = r?['id'];
+      if (id == null || id.isEmpty) return null;
+      return (kind: r?['kind'] ?? 'alarm', id: id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearPendingRing() => _voidCall('clearPendingRing');
+
   /// Whether the ring service is currently playing the alarm. A ringing
   /// screen asks before starting its own tone -- exactly one of them makes
   /// noise for the whole ring, so there is no seam to hear.

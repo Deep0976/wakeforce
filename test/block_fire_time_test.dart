@@ -93,15 +93,14 @@ void main() {
     });
   });
 
-  test('opensScreen covers both toggles that take over the screen', () {
-    expect(lunch(startMinute: 600).opensScreen, isFalse);
-    expect(
-      lunch(startMinute: 600).copyWith(startsFocus: true).opensScreen,
-      isTrue,
-    );
-    expect(
-      lunch(startMinute: 600).copyWith(ringAsAlarm: true).opensScreen,
-      isTrue,
-    );
+  test('every block opens its screen, whatever the toggles say', () {
+    // This used to depend on ringAsAlarm/startsFocus, which left a plain
+    // block posting a notification the student had to find and tap. A routine
+    // you have to go looking for is not a routine. The toggles still decide
+    // how loud it is, not whether it shows up.
+    final plain = lunch(startMinute: 600);
+    expect(plain.opensScreen, isTrue);
+    expect(plain.copyWith(startsFocus: true).opensScreen, isTrue);
+    expect(plain.copyWith(ringAsAlarm: true).opensScreen, isTrue);
   });
 }

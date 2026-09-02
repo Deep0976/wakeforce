@@ -18,8 +18,36 @@ class MainActivity : FlutterActivity() {
 
     private val focusChannel = "wakeforce/focus"
 
+    /// The ring that launched us, straight off the Intent.
+    ///
+    /// Not through SharedPreferences: the receiver writes the legacy XML store
+    /// and Dart's SharedPreferencesAsync reads DataStore -- same name, two
+    /// different files, so the value never arrived and the app opened on its
+    /// normal screen. Tapping the notification worked only because that path
+    /// carries the id in the payload instead.
+    private var pendingRingKind: String? = null
+    private var pendingRingId: String? = null
+
+    private fun capturePendingRing(from: Intent?) {
+        val kind = from?.getStringExtra(RingAlarmReceiver.EXTRA_KIND) ?: return
+        val id = from.getStringExtra(RingAlarmReceiver.EXTRA_ID) ?: return
+        if (id.isEmpty()) return
+        pendingRingKind = kind
+        pendingRingId = id
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // A ring arriving while the app is already open comes through here
+        // rather than onCreate, which is the usual case: the student had the
+        // app in the background.
+        setIntent(intent)
+        capturePendingRing(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        capturePendingRing(intent)
 
         // Required so the alarm's full-screen notification intent can pop this
         // activity directly over the lock screen and wake the display, instead
@@ -141,6 +169,21 @@ class MainActivity : FlutterActivity() {
                     // is no seam and no chance of the two being on different
                     // tones (the service falls back to the system alarm when
                     // the bundled one will not open).
+                    // Peek, not consume: Dart may ask before its providers
+                    // have loaded and cannot act yet. It clears this itself
+                    // once it has actually opened the screen.
+                    "peekPendingRing" -> result.success(
+                        pendingRingId?.let {
+                            mapOf("kind" to pendingRingKind, "id" to it)
+                        }
+                    )
+
+                    "clearPendingRing" -> {
+                        pendingRingKind = null
+                        pendingRingId = null
+                        result.success(null)
+                    }
+
                     "isNativeRinging" -> result.success(
                         RingForegroundService.isRinging
                     )
