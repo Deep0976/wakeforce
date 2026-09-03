@@ -325,9 +325,11 @@
       <p>A routine block is a piece of your day with a name and a time &mdash;
       <em>Physics 08:00&ndash;10:00</em>, <em>Lunch 13:00&ndash;14:00</em>,
       <em>Gym 17:00&ndash;18:00</em>. Open <strong>Alarms &rarr; Routine</strong> and tap <strong>+</strong>.</p>
-      <p>Each block can do three things: <strong>remind you</strong> a few minutes early,
-      <strong>ring as a full alarm</strong> so it can't be ignored, and &mdash; for a study block &mdash;
-      <strong>start a focus session</strong> the moment it begins.</p>
+      <p>Every block opens on screen when it starts &mdash; there is no notification to
+      find and press. Beyond that each one can <strong>remind you</strong> a few minutes
+      early, <strong>ring as a full alarm</strong> so it is loud rather than a chime,
+      and &mdash; for a study block &mdash; <strong>start a focus session</strong> the
+      moment it begins.</p>
       <p>When a block rings you get three choices: start the focus session, snooze five
       minutes, or skip today. Unlike the wake alarm, a routine block lets you walk away.
       Only the morning one locks the phone.</p>
@@ -407,10 +409,19 @@
 <section>
   <div class="sec-head"><div class="eyebrow">If something looks wrong</div><h2>Questions</h2></div>
   <details open><summary>My alarm made a sound but didn't open on screen</summary>
-    <p>Android blocks full-screen alarms by default. Open <strong>Alarms</strong> and tap
-    <strong>ALLOW</strong> on the banner at the top. On OPPO, Realme, Xiaomi and OnePlus phones
-    also allow WakeForce to run in the background &mdash; those phones freeze apps a few
-    seconds after the screen goes off, which stops the alarm screen appearing.</p></details>
+    <p>Two different causes, and they need different fixes. Work through them in
+    this order.</p>
+    <p><strong>1. The phone refused the app the screen.</strong> On OPPO, Realme,
+    OnePlus, Vivo and Xiaomi this is nearly always it. Long-press the WakeForce icon
+    &rarr; <strong>App info</strong> &rarr; turn on <strong>Display pop-up windows while
+    running in the background</strong>. This is <em>not</em> the same as
+    &ldquo;Draw over other apps&rdquo;, and having that one on does not cover it.</p>
+    <p><strong>2. Android is holding back full-screen alarms.</strong> Open
+    <strong>Alarms</strong> and tap <strong>ALLOW</strong> on the banner at the top.</p>
+    <p>If the alarm rang at the right second and only the screen was missing, it is
+    almost certainly the first one. If the alarm was late, or arrived the moment you
+    unlocked the phone, the app was frozen instead &mdash; see
+    <em>Stop your phone from freezing WakeForce</em> above.</p></details>
   <details open><summary>&ldquo;App not installed&rdquo; when I try to install the APK</summary>
     <p>Tap <strong>More details &rarr; Install anyway</strong>. If there's no such option, open
     Play Store &rarr; Play Protect &rarr; Settings, turn scanning off while you install, then
