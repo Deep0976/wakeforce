@@ -1,0 +1,4 @@
+# Student guide pages and the hosting redirect are documentation, not app source.
+# Keeps GitHub's language bar showing the Flutter/Dart app accurately.
+wakeforce-guide-*.html linguist-documentation
+hosting_redirect/** linguist-documentation
