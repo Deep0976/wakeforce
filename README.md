@@ -98,7 +98,7 @@ test/           156 widget and unit tests
 
 ## Tech stack
 
-**App:** Flutter · Dart · Provider · Android AlarmManager · local notifications · sensors · on-device image similarity
+**App:** Flutter · Dart · Provider · Android AlarmManager · local notifications · sensors · on-device image similarity<br/>
 **Backend:** Firebase Auth (Google Sign-In) · Cloud Firestore · Firebase Analytics · GA4
 
 ## Getting started
