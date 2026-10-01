@@ -11,6 +11,41 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // A student's alarms and routine blocks, so a reinstall or a new phone
+    // restores what they configured and not just their numbers. Same shape
+    // as userStats: the document id IS the uid, so the check is exact.
+    match /userAlarms/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /userRoutine/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // One document per answer: a star rating, an optional sentence, and who
+    // wrote it. Create-only -- a student may file feedback under their own
+    // uid and nobody else's, and cannot edit or delete what they or anyone
+    // else already sent. The app never reads it back; you read it in the
+    // Firebase console, which bypasses these rules as admin.
+    match /feedback/{entry} {
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.uid;
+
+      // The inbox. Two accounts belonging to the same person read what
+      // everyone wrote; a student cannot read even their own, which keeps a
+      // single stolen sign-in from walking off with the whole class's names
+      // and comments. Pinned to verified emails so a look-alike address
+      // cannot claim it. Keep this list in step with
+      // FeedbackPrompt.ownerEmails, which decides whether the Settings row
+      // is drawn.
+      allow read: if request.auth != null
+                  && request.auth.token.email_verified == true
+                  && request.auth.token.email in [
+                       'v.notebooklm@gmail.com',
+                       'deepagrawal567@gmail.com'
+                     ];
+    }
+
     // Anything not named above is denied. Adding a collection later means
     // deliberately writing a rule for it, rather than inheriting access.
     match /{document=**} {

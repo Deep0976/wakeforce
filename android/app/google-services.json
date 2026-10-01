@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "997847107903-46jsd99gf5fgjlmm6n8l5a9ebjdhv274.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wakemission.wake_mission_app",
+            "certificate_hash": "76d850b670234b35935ddde22d6c1cf16cd46c24"
+          }
+        },
+        {
           "client_id": "997847107903-g77lep825srsakn5edeeti6ietve0tog.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/routine_block.dart';
 import 'notification_service.dart';
+import 'setup_cloud_sync.dart';
 
 /// Per-account, matching AlarmRepository/StatsRepository -- a second Google
 /// account on the same device must not inherit the first student's routine.
@@ -15,9 +16,23 @@ class RoutineRepository {
 
   String get _key => 'routineBlocks_$uid';
 
+  /// Local first, cloud only to fill an empty install -- see
+  /// [AlarmRepository.loadAlarms], which this deliberately mirrors. A routine
+  /// is a morning's worth of typing; losing it to a reinstall is worse than
+  /// losing a streak, which comes back on its own.
   Future<List<RoutineBlock>> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_key) ?? const [];
+    var raw = prefs.getStringList(_key) ?? const <String>[];
+
+    if (raw.isEmpty) {
+      final cloud = await SetupCloudSync.instance
+          .fetch(SetupCloudSync.routineCollection, uid);
+      if (cloud != null && cloud.isNotEmpty) {
+        raw = cloud;
+        await prefs.setStringList(_key, raw);
+      }
+    }
+
     return raw
         .map((e) => RoutineBlock.fromJson(jsonDecode(e) as Map<String, dynamic>))
         .toList();
@@ -25,10 +40,10 @@ class RoutineRepository {
 
   Future<void> save(List<RoutineBlock> blocks) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _key,
-      blocks.map((b) => jsonEncode(b.toJson())).toList(),
-    );
+    final raw = blocks.map((b) => jsonEncode(b.toJson())).toList();
+    await prefs.setStringList(_key, raw);
+    await SetupCloudSync.instance
+        .push(SetupCloudSync.routineCollection, uid, raw);
   }
 }
 

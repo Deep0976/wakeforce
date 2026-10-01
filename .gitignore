@@ -51,3 +51,6 @@ app.*.map.json
 
 # Firebase hosting is gone; the guide lives on Vercel.
 .firebase/
+
+# Local tool config
+.claude/

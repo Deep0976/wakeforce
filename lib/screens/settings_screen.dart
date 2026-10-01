@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../services/feedback_prompt.dart';
 import '../services/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/wake_card.dart';
+import 'feedback_inbox_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -167,6 +169,18 @@ class SettingsScreen extends StatelessWidget {
                   label: 'Share app',
                   onTap: () => _showComingSoon(context, 'Sharing'),
                 ),
+                // Only on the owner's account. Students never see the row,
+                // and the Firestore rule refuses them even if they did.
+                if (FeedbackPrompt.isOwner)
+                  _SettingRow(
+                    icon: Icons.forum_outlined,
+                    label: 'Feedback inbox',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const FeedbackInboxScreen(),
+                      ),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.gapWide),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../services/stats_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/feedback_ui.dart';
 import 'alarms_screen.dart';
 import 'focus_setup_screen.dart';
 import 'home_screen.dart';
@@ -23,6 +26,48 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+
+  StatsProvider? _stats;
+  bool _asking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Catches a student who is due but closed the app before tapping
+    // Continue on the mission screen, which is the other place this is
+    // asked from.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _stats = context.read<StatsProvider>()..addListener(_check);
+      _check();
+    });
+  }
+
+  @override
+  void dispose() {
+    _stats?.removeListener(_check);
+    super.dispose();
+  }
+
+  /// Waits for the stats to actually arrive before deciding anything.
+  ///
+  /// They load asynchronously, partly from Firestore, so on the first frame
+  /// the solved count is still zero. Checking then concludes nothing is due
+  /// and never looks again -- which is why this went quiet on app open while
+  /// the mission screen kept working.
+  ///
+  /// Skips while another route sits on top: solving a mission notifies from
+  /// under the complete screen, and that screen asks for itself on Continue.
+  Future<void> _check() async {
+    if (_asking || !mounted) return;
+    final stats = _stats;
+    if (stats == null || !stats.loaded) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+
+    _asking = true;
+    await maybeAskAfterMission(context);
+    _asking = false;
+  }
 
   static const _screens = [
     HomeScreen(),

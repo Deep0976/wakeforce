@@ -153,6 +153,8 @@ class _RingingScreenState extends State<RingingScreen> {
         builder: (_) => MissionCompleteScreen(
           xpEarned: xpEarned,
           currentStreak: statsProvider.stats.currentStreak,
+          missionType: widget.alarm.missionType,
+          difficulty: widget.alarm.difficulty,
         ),
       ),
     );

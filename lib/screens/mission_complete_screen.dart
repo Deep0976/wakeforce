@@ -3,9 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/alarm.dart';
+import '../models/mission_type.dart';
 import '../models/routine_block.dart';
 import '../services/routine_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/feedback_ui.dart';
 import '../widgets/wake_card.dart';
 import 'focus_setup_screen.dart';
 
@@ -13,10 +16,18 @@ class MissionCompleteScreen extends StatelessWidget {
   final int xpEarned;
   final int currentStreak;
 
+  /// The mission just solved. Carried only so a feedback answer given here
+  /// arrives with the thing it is about -- two stars on an Advanced physics
+  /// question means something different from two stars on Easy maths.
+  final MissionType missionType;
+  final MissionDifficulty difficulty;
+
   const MissionCompleteScreen({
     super.key,
     required this.xpEarned,
     required this.currentStreak,
+    required this.missionType,
+    required this.difficulty,
   });
 
   static const _quotes = [
@@ -100,8 +111,21 @@ class MissionCompleteScreen extends StatelessWidget {
               ),
               const Spacer(),
               FilledButton(
-                onPressed: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
+                onPressed: () {
+                  // Leaving the celebration is the moment to ask: the alarm
+                  // that is being rated just happened, and the shell below is
+                  // about to be the top route, so the prompt is not stacked
+                  // over this screen.
+                  final navigator = Navigator.of(context);
+                  navigator.popUntil((route) => route.isFirst);
+                  maybeAskAfterMission(
+                    navigator.context,
+                    answerContext: {
+                      'mission': missionType.name,
+                      'difficulty': difficulty.name,
+                    },
+                  );
+                },
                 child: const Text('Continue'),
               ),
               // Hands off to the next thing rather than dead-ending: if a
